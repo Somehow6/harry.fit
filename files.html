@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件管理 - Harry's Game</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/files.css">
+</head>
+<body>
+    <div class="file-manager-container">
+        <div class="header">
+            <h1>文件管理</h1>
+            <button onclick="location.href='index.html'" class="pink-button">返回游戏</button>
+        </div>
+
+        <div class="upload-section">
+            <h2>上传文件</h2>
+            <form id="upload-form" enctype="multipart/form-data">
+                <input type="file" id="file-input" name="file">
+                <button type="submit" class="pink-button">上传</button>
+            </form>
+        </div>
+
+        <div class="files-list">
+            <h2>我的文件</h2>
+            <div id="files-container">
+                <!-- 文件列表将通过JavaScript动态加载 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/files.js"></script>
+</body>
+</html>

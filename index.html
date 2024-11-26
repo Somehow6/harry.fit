@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯方块 - Harry's Game</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="game-container">
+            <div class="game-area">
+                <canvas id="game-area" width="300" height="600"></canvas>
+            </div>
+            <div class="game-info">
+                <div class="next-piece">
+                    <h3>下一个方块</h3>
+                    <canvas id="preview" width="120" height="120"></canvas>
+                </div>
+                <div class="stats">
+                    <div class="score">
+                        <h3>分数</h3>
+                        <p id="score">0</p>
+                    </div>
+                    <div class="level">
+                        <h3>等级</h3>
+                        <p id="level">1</p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="restart-button" onclick="restartGame()" style="display: none;">重新开始</button>
+                </div>
+                <div class="leaderboard">
+                    <h3>排行榜</h3>
+                    <div id="leaderboard-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="game-info">
+        <!-- ... 其他内容 ... -->
+        <div class="file-management">
+            <button id="file-manager-btn" onclick="openFileManager()" class="pink-button">
+                文件管理
+            </button>
+        </div>
+    </div>
+    <!-- 登录模态框 -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>登录/注册</h2>
+            <input type="text" id="username" placeholder="用户名">
+            <input type="password" id="password" placeholder="密码">
+            <div class="button-group">
+                <button onclick="login()">登录</button>
+                <button onclick="register()">注册</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/game.js"></script>
+</body>
+</html>
