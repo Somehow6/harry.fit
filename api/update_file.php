@@ -56,18 +56,32 @@ if ($fileSize > $maxFileSize) {
 }
 
 // 创建上传目录
-$uploadDir = '../uploads/' . $_SESSION['user_id'] . '/';
-if (!file_exists($uploadDir)) {
-    if (!mkdir($uploadDir, 0755, true)) {
-        error_log("Upload failed - Cannot create directory: $uploadDir");
+$baseUploadDir = dirname(__DIR__) . '/uploads';
+$userUploadDir = $baseUploadDir . '/' . $_SESSION['user_id'];
+
+// 确保基本上传目录存在
+if (!file_exists($baseUploadDir)) {
+    if (!@mkdir($baseUploadDir, 0755, true)) {
+        error_log("Upload failed - Cannot create base upload directory: $baseUploadDir");
         echo json_encode(handleError('创建上传目录失败'));
         exit;
     }
+    chmod($baseUploadDir, 0755);
+}
+
+// 创建用户上传目录
+if (!file_exists($userUploadDir)) {
+    if (!@mkdir($userUploadDir, 0755, true)) {
+        error_log("Upload failed - Cannot create user upload directory: $userUploadDir");
+        echo json_encode(handleError('创建用户上传目录失败'));
+        exit;
+    }
+    chmod($userUploadDir, 0755);
 }
 
 // 检查目录权限
-if (!is_writable($uploadDir)) {
-    error_log("Upload failed - Directory not writable: $uploadDir");
+if (!is_writable($userUploadDir)) {
+    error_log("Upload failed - Directory not writable: $userUploadDir");
     echo json_encode(handleError('上传目录没有写入权限'));
     exit;
 }
@@ -75,7 +89,7 @@ if (!is_writable($uploadDir)) {
 // 生成安全的文件名
 $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
 $uniqueName = uniqid('file_', true) . '_' . time() . '.' . $fileExtension;
-$uploadPath = $uploadDir . $uniqueName;
+$uploadPath = $userUploadDir . '/' . $uniqueName;
 
 try {
     // 开始事务
@@ -95,7 +109,10 @@ try {
     }
 
     // 保存文件
-    if (move_uploaded_file($tmpName, $uploadPath)) {
+    if (@move_uploaded_file($tmpName, $uploadPath)) {
+        // 设置文件权限
+        chmod($uploadPath, 0644);
+        
         // 验证上传的文件
         if (!file_exists($uploadPath) || filesize($uploadPath) !== $fileSize) {
             throw new Exception('文件上传验证失败');
@@ -127,7 +144,8 @@ try {
             ]
         ]);
     } else {
-        error_log("Upload failed - move_uploaded_file failed");
+        $uploadError = error_get_last();
+        error_log("Upload failed - move_uploaded_file failed: " . ($uploadError['message'] ?? 'Unknown error'));
         throw new Exception('文件上传失败');
     }
 } catch (Exception $e) {
@@ -138,7 +156,7 @@ try {
     
     // 如果文件已上传，删除它
     if (file_exists($uploadPath)) {
-        unlink($uploadPath);
+        @unlink($uploadPath);
     }
     
     error_log("Upload failed - Exception: " . $e->getMessage());
