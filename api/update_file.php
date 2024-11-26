@@ -61,31 +61,26 @@ $userUploadDir = $baseUploadDir . '/' . $_SESSION['user_id'];
 
 error_log("Creating directories - Base: $baseUploadDir, User: $userUploadDir");
 
-// 确保基本上传目录存在
-if (!file_exists($baseUploadDir)) {
-    error_log("Attempting to create base directory: $baseUploadDir");
-    if (!@mkdir($baseUploadDir, 0755, true)) {
-        $error = error_get_last();
-        error_log("Failed to create base directory: " . ($error['message'] ?? 'Unknown error'));
-        echo json_encode(handleError('创建基本上传目录失败'));
-        exit;
-    }
-    @chmod($baseUploadDir, 0755);
-}
-
-// 创建用户上传目录
+// 确保用户上传目录存在
 if (!file_exists($userUploadDir)) {
     error_log("Attempting to create user directory: $userUploadDir");
     if (!@mkdir($userUploadDir, 0755, true)) {
         $error = error_get_last();
         error_log("Failed to create user directory: " . ($error['message'] ?? 'Unknown error'));
-        echo json_encode(handleError('创建用户上传目录失败'));
-        exit;
+        
+        // 尝试创建目录并设置权限
+        $cmd = "mkdir -p " . escapeshellarg($userUploadDir) . " && chown www:www " . escapeshellarg($userUploadDir) . " && chmod 755 " . escapeshellarg($userUploadDir);
+        exec($cmd, $output, $returnVar);
+        
+        if ($returnVar !== 0) {
+            error_log("Failed to create directory using shell command. Return value: $returnVar");
+            echo json_encode(handleError('创建用户上传目录失败'));
+            exit;
+        }
     }
-    @chmod($userUploadDir, 0755);
 }
 
-// 检查目录权限
+// 再次检查目录权限
 if (!is_writable($userUploadDir)) {
     error_log("Upload failed - Directory not writable: $userUploadDir");
     echo json_encode(handleError('上传目录没有写入权限'));

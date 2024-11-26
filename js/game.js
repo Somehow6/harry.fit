@@ -552,59 +552,74 @@ function hideLoginModal() {
 
 // 登录函数
 async function login() {
-    console.log('Login attempt...');
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    
-    if (!username || !password) {
-        alert('请输入用户名和密码');
-        return;
-    }
-    
+
     try {
-        const data = await apiRequest('login', { username, password });
-        
+        const response = await fetch('/api/login.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
         if (data.success) {
-            currentUser = {
-                id: data.user_id,
-                username: username
-            };
+            // 隐藏登录模态框
+            document.getElementById('login-modal').style.display = 'none';
             
-            console.log('Login successful:', currentUser);
-            hideLoginModal();
-            startGame();
-            updateLeaderboard();
+            // 获取跳转目标
+            const redirectTo = sessionStorage.getItem('redirectAfterLogin');
+            if (redirectTo) {
+                sessionStorage.removeItem('redirectAfterLogin'); // 清除跳转标记
+                window.location.href = redirectTo;
+            } else {
+                // 刷新页面以更新状态
+                location.reload();
+            }
         } else {
-            alert(data.error || '登录失败');
+            alert(data.message || '登录失败');
         }
     } catch (error) {
         console.error('Login error:', error);
-        alert('登录出错，请重试');
+        alert('登录失败，请稍后重试');
     }
 }
 
 // 注册函数
 async function register() {
-    console.log('Register attempt...');
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    
-    if (!username || !password) {
-        alert('请输入用户名和密码');
-        return;
-    }
-    
+
     try {
-        const data = await apiRequest('register', { username, password });
-        
+        const response = await fetch('/api/register.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
         if (data.success) {
-            alert('注册成功！请登录');
+            alert('注册成功，已自动登录');
+            // 获取跳转目标
+            const redirectTo = sessionStorage.getItem('redirectAfterLogin');
+            if (redirectTo) {
+                sessionStorage.removeItem('redirectAfterLogin');
+                window.location.href = redirectTo;
+            } else {
+                location.reload();
+            }
         } else {
-            alert(data.error || '注册失败');
+            alert(data.message || '注册失败');
         }
     } catch (error) {
-        console.error('Register error:', error);
-        alert('注册出错，请重试');
+        console.error('Registration error:', error);
+        alert('注册失败，请稍后重试');
     }
 }
 
@@ -624,4 +639,44 @@ function showLevelUpAnimation() {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM Content Loaded');
     initGame();
+});
+
+// 打开文件管理器
+async function openFileManager() {
+    try {
+        // 检查登录状态
+        const response = await fetch('/api/check_login.php', {
+            credentials: 'same-origin'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            // 已登录，直接跳转
+            window.location.href = 'files.html';
+        } else {
+            // 未登录，记录跳转目标并显示登录框
+            sessionStorage.setItem('redirectAfterLogin', 'files.html');
+            document.getElementById('login-modal').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error checking login status:', error);
+        alert('检查登录状态失败');
+    }
+}
+
+// 页面加载时检查登录状态
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const response = await fetch('/api/check_login.php', {
+            credentials: 'same-origin'
+        });
+        const data = await response.json();
+        
+        // 如果未登录且有重定向目标，显示登录框
+        if (!data.success && sessionStorage.getItem('redirectAfterLogin')) {
+            document.getElementById('login-modal').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error checking login status:', error);
+    }
 });
