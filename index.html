@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>俄罗斯方块 - Harry's Game</title>
     <link rel="stylesheet" href="css/style.css">
+    <script>
+        // 强制使用 HTTPS
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            window.location.href = 'https://' + window.location.hostname + window.location.pathname + window.location.search;
+        }
+    </script>
 </head>
 <body>
     <div class="main-container">

@@ -1,7 +1,7 @@
 # 启用 PHP 错误日志
 php_flag display_errors off
 php_value error_reporting E_ALL
-php_value error_log logs/error.log
+php_value error_log /www/wwwlogs/www.harry.fit.error.log
 
 # 设置上传限制
 php_value upload_max_filesize 10M
