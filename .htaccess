@@ -67,9 +67,9 @@ RewriteEngine On
 RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)
 RewriteRule .* - [F]
 
-# 重定向所有HTTP请求到HTTPS
-RewriteCond %{HTTPS} off
-RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# 重定向所有HTTP请求到HTTPS（暂时注释掉）
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # API路由规则
 RewriteCond %{REQUEST_FILENAME} !-f
