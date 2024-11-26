@@ -14,14 +14,14 @@ if (empty($username) || empty($password)) {
 }
 
 // 验证用户名格式
-if (!preg_match('/^[a-zA-Z0-9_]{4,20}$/', $username)) {
-    echo json_encode(handleError('用户名只能包含字母、数字和下划线，长度4-20位'));
+if (!preg_match('/^[a-zA-Z0-9_]{1,20}$/', $username)) {
+    echo json_encode(handleError('用户名只能包含字母、数字和下划线，长度1-20位'));
     exit;
 }
 
 // 验证密码强度
-if (strlen($password) < 6) {
-    echo json_encode(handleError('密码长度至少6位'));
+if (strlen($password) < 1) {
+    echo json_encode(handleError('密码不能为空'));
     exit;
 }
 
@@ -40,15 +40,11 @@ try {
 
     // 创建新用户
     $hash = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = $pdo->prepare("INSERT INTO users (username, password, status) VALUES (?, ?, 'active')");
+    $stmt = $pdo->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
     $stmt->execute([$username, $hash]);
     
     // 获取新用户ID
     $userId = $pdo->lastInsertId();
-    
-    // 记录注册日志
-    $stmt = $pdo->prepare("INSERT INTO login_logs (user_id, ip_address) VALUES (?, ?)");
-    $stmt->execute([$userId, $_SERVER['REMOTE_ADDR']]);
     
     // 提交事务
     $pdo->commit();
