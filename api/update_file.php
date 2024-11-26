@@ -56,27 +56,33 @@ if ($fileSize > $maxFileSize) {
 }
 
 // 创建上传目录
-$baseUploadDir = dirname(__DIR__) . '/uploads';
+$baseUploadDir = '/www/wwwroot/www.harry.fit/uploads';  // 使用绝对路径
 $userUploadDir = $baseUploadDir . '/' . $_SESSION['user_id'];
+
+error_log("Creating directories - Base: $baseUploadDir, User: $userUploadDir");
 
 // 确保基本上传目录存在
 if (!file_exists($baseUploadDir)) {
+    error_log("Attempting to create base directory: $baseUploadDir");
     if (!@mkdir($baseUploadDir, 0755, true)) {
-        error_log("Upload failed - Cannot create base upload directory: $baseUploadDir");
-        echo json_encode(handleError('创建上传目录失败'));
+        $error = error_get_last();
+        error_log("Failed to create base directory: " . ($error['message'] ?? 'Unknown error'));
+        echo json_encode(handleError('创建基本上传目录失败'));
         exit;
     }
-    chmod($baseUploadDir, 0755);
+    @chmod($baseUploadDir, 0755);
 }
 
 // 创建用户上传目录
 if (!file_exists($userUploadDir)) {
+    error_log("Attempting to create user directory: $userUploadDir");
     if (!@mkdir($userUploadDir, 0755, true)) {
-        error_log("Upload failed - Cannot create user upload directory: $userUploadDir");
+        $error = error_get_last();
+        error_log("Failed to create user directory: " . ($error['message'] ?? 'Unknown error'));
         echo json_encode(handleError('创建用户上传目录失败'));
         exit;
     }
-    chmod($userUploadDir, 0755);
+    @chmod($userUploadDir, 0755);
 }
 
 // 检查目录权限
@@ -109,9 +115,10 @@ try {
     }
 
     // 保存文件
+    error_log("Attempting to move file to: $uploadPath");
     if (@move_uploaded_file($tmpName, $uploadPath)) {
         // 设置文件权限
-        chmod($uploadPath, 0644);
+        @chmod($uploadPath, 0644);
         
         // 验证上传的文件
         if (!file_exists($uploadPath) || filesize($uploadPath) !== $fileSize) {
