@@ -20,6 +20,10 @@
                 <input type="file" id="file-input" name="file">
                 <button type="submit" class="pink-button">上传</button>
             </form>
+            <div id="upload-progress" style="display: none;">
+                <div class="progress-bar"></div>
+                <div class="progress-text">0%</div>
+            </div>
         </div>
 
         <div class="files-list">
@@ -30,6 +34,159 @@
         </div>
     </div>
 
-    <script src="js/files.js"></script>
+    <script>
+    // 检查登录状态
+    async function checkLoginStatus() {
+        try {
+            const response = await fetch('/api/check_login.php');
+            const data = await response.json();
+            
+            if (!data.success) {
+                alert('请先登录');
+                window.location.href = 'index.html';
+                return false;
+            }
+            return true;
+        } catch (error) {
+            console.error('Error checking login status:', error);
+            alert('检查登录状态失败');
+            return false;
+        }
+    }
+
+    // 加载文件列表
+    async function loadFiles() {
+        try {
+            const response = await fetch('/api/get_files.php');
+            const data = await response.json();
+            
+            if (data.success) {
+                const container = document.getElementById('files-container');
+                container.innerHTML = '';
+                
+                if (data.files.length === 0) {
+                    container.innerHTML = '<p>暂无文件</p>';
+                    return;
+                }
+                
+                data.files.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <div class="file-info">
+                            <div class="file-name">${file.original_name}</div>
+                            <div class="file-size">${formatFileSize(file.file_size)}</div>
+                        </div>
+                        <div class="file-actions">
+                            <button onclick="downloadFile(${file.id})" class="pink-button">下载</button>
+                            <button onclick="deleteFile(${file.id})" class="delete-btn">删除</button>
+                        </div>
+                    `;
+                    container.appendChild(fileItem);
+                });
+            } else {
+                alert('加载文件列表失败：' + data.message);
+            }
+        } catch (error) {
+            console.error('Error loading files:', error);
+            alert('加载文件列表失败');
+        }
+    }
+
+    // 文件上传处理
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // 检查登录状态
+        if (!await checkLoginStatus()) {
+            return;
+        }
+
+        const fileInput = document.getElementById('file-input');
+        if (!fileInput.files.length) {
+            alert('请选择要上传的文件');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // 显示进度条
+        const progressBar = document.querySelector('.progress-bar');
+        const progressText = document.querySelector('.progress-text');
+        document.getElementById('upload-progress').style.display = 'block';
+
+        try {
+            const response = await fetch('/api/update_file.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('文件上传成功');
+                loadFiles();
+            } else {
+                alert('文件上传失败：' + (data.message || '未知错误'));
+            }
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('文件上传失败');
+        } finally {
+            document.getElementById('upload-progress').style.display = 'none';
+            fileInput.value = '';
+        }
+    });
+
+    // 文件大小格式化
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // 下载文件
+    function downloadFile(fileId) {
+        window.location.href = `/api/download_file.php?file_id=${fileId}`;
+    }
+
+    // 删除文件
+    async function deleteFile(fileId) {
+        if (!confirm('确定要删除这个文件吗？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/delete_file.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file_id: fileId })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('文件删除成功');
+                loadFiles();
+            } else {
+                alert('文件删除失败：' + (data.message || '未知错误'));
+            }
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            alert('文件删除失败');
+        }
+    }
+
+    // 页面加载时检查登录状态并加载文件列表
+    window.addEventListener('DOMContentLoaded', async () => {
+        if (await checkLoginStatus()) {
+            loadFiles();
+        }
+    });
+    </script>
 </body>
 </html>

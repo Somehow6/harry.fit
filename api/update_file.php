@@ -3,12 +3,17 @@ session_start();
 header('Content-Type: application/json');
 require_once 'config.php';
 
+// 调试日志
+error_log("Upload attempt - User ID: " . ($_SESSION['user_id'] ?? 'not set'));
+
 if (!isset($_SESSION['user_id'])) {
+    error_log("Upload failed - User not logged in");
     echo json_encode(handleError('未登录'));
     exit;
 }
 
 if (!isset($_FILES['file'])) {
+    error_log("Upload failed - No file uploaded");
     echo json_encode(handleError('没有上传文件'));
     exit;
 }
@@ -18,6 +23,9 @@ $fileName = filter_var($file['name'], FILTER_SANITIZE_STRING);
 $tmpName = $file['tmp_name'];
 $fileSize = $file['size'];
 $fileType = $file['type'];
+
+// 调试日志
+error_log("File upload details - Name: $fileName, Size: $fileSize, Type: $fileType");
 
 // 文件类型白名单
 $allowedTypes = [
@@ -35,12 +43,14 @@ $maxFileSize = 10 * 1024 * 1024;
 
 // 验证文件类型
 if (!in_array($fileType, $allowedTypes)) {
+    error_log("Upload failed - Invalid file type: $fileType");
     echo json_encode(handleError('不支持的文件类型'));
     exit;
 }
 
 // 验证文件大小
 if ($fileSize > $maxFileSize) {
+    error_log("Upload failed - File too large: $fileSize bytes");
     echo json_encode(handleError('文件大小超过限制（最大10MB）'));
     exit;
 }
@@ -48,7 +58,18 @@ if ($fileSize > $maxFileSize) {
 // 创建上传目录
 $uploadDir = '../uploads/' . $_SESSION['user_id'] . '/';
 if (!file_exists($uploadDir)) {
-    mkdir($uploadDir, 0755, true);
+    if (!mkdir($uploadDir, 0755, true)) {
+        error_log("Upload failed - Cannot create directory: $uploadDir");
+        echo json_encode(handleError('创建上传目录失败'));
+        exit;
+    }
+}
+
+// 检查目录权限
+if (!is_writable($uploadDir)) {
+    error_log("Upload failed - Directory not writable: $uploadDir");
+    echo json_encode(handleError('上传目录没有写入权限'));
+    exit;
 }
 
 // 生成安全的文件名
@@ -68,6 +89,7 @@ try {
     // 设置用户存储限制 (100MB)
     $storageLimit = 100 * 1024 * 1024;
     if (($totalSize + $fileSize) > $storageLimit) {
+        error_log("Upload failed - Storage quota exceeded");
         echo json_encode(handleError('存储空间不足'));
         exit;
     }
@@ -95,6 +117,7 @@ try {
         // 提交事务
         $pdo->commit();
         
+        error_log("Upload successful - File: $fileName");
         echo json_encode([
             'success' => true,
             'file' => [
@@ -104,6 +127,7 @@ try {
             ]
         ]);
     } else {
+        error_log("Upload failed - move_uploaded_file failed");
         throw new Exception('文件上传失败');
     }
 } catch (Exception $e) {
@@ -117,5 +141,6 @@ try {
         unlink($uploadPath);
     }
     
+    error_log("Upload failed - Exception: " . $e->getMessage());
     echo json_encode(handleError('文件上传失败', $e->getMessage()));
 }
