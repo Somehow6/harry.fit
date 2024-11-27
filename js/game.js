@@ -48,27 +48,153 @@ const colors = [
     '#FF1493', '#DB7093', '#C71585', '#FF69B4'
 ];
 
+// 全局变量
 let currentUser = null;
 let game = null;
 
-async function openFileManager() {
+// 检查登录状态
+async function checkLoginStatus() {
     try {
-        const response = await fetch('/api/check_login.php');
+        const response = await fetch('/api/check_login.php', {
+            credentials: 'same-origin'
+        });
         const data = await response.json();
         
         if (data.success && data.user) {
-            window.location.href = 'files.html';
-        } else {
-            alert('请先登录');
-            showLoginModal();
+            currentUser = data.user;
+            hideLoginModal();
+            return true;
         }
+        return false;
     } catch (error) {
         console.error('Error checking login status:', error);
-        alert('发生错误，请重试');
+        return false;
     }
 }
+
+// 登录函数
+async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    if (!username || !password) {
+        alert('请输入用户名和密码');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/login.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            currentUser = data.user;
+            hideLoginModal();
+            
+            // 获取跳转目标
+            const redirectTo = sessionStorage.getItem('redirectAfterLogin');
+            if (redirectTo) {
+                sessionStorage.removeItem('redirectAfterLogin');
+                window.location.href = redirectTo;
+            } else {
+                // 如果在游戏页面，开始游戏
+                if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
+                    startGame();
+                } else {
+                    location.reload();
+                }
+            }
+        } else {
+            alert(data.message || '登录失败');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        alert('登录失败，请稍后重试');
+    }
+}
+
+// 注册函数
+async function register() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    if (!username || !password) {
+        alert('请输入用户名和密码');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/register.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            currentUser = data.user;
+            alert('注册成功！');
+            hideLoginModal();
+            
+            const redirectTo = sessionStorage.getItem('redirectAfterLogin');
+            if (redirectTo) {
+                sessionStorage.removeItem('redirectAfterLogin');
+                window.location.href = redirectTo;
+            } else {
+                if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
+                    startGame();
+                } else {
+                    location.reload();
+                }
+            }
+        } else {
+            alert(data.message || '注册失败');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        alert('注册失败，请稍后重试');
+    }
+}
+
+// 显示登录框
+function showLoginModal() {
+    const modal = document.getElementById('login-modal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+// 隐藏登录框
+function hideLoginModal() {
+    const modal = document.getElementById('login-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// 打开文件管理器
+async function openFileManager() {
+    const isLoggedIn = await checkLoginStatus();
+    
+    if (isLoggedIn) {
+        window.location.href = 'files.html';
+    } else {
+        sessionStorage.setItem('redirectAfterLogin', 'files.html');
+        showLoginModal();
+    }
+}
+
 // 初始化游戏
-function initGame() {
+async function initGame() {
     console.log('Initializing game...');
     
     game = {
@@ -100,15 +226,34 @@ function initGame() {
     // 清空画布
     clearCanvas();
 
-    // 如果没有登录，显示登录框
-    if (!currentUser) {
-        console.log('No current user, showing login modal...');
-        showLoginModal();
+    // 检查登录状态
+    const isLoggedIn = await checkLoginStatus();
+    if (!isLoggedIn) {
+        const redirectTarget = sessionStorage.getItem('redirectAfterLogin');
+        if (redirectTarget) {
+            showLoginModal();
+        }
     } else {
-        console.log('User already logged in, starting game...');
         startGame();
     }
 }
+
+// 页面加载时的初始化
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM Content Loaded');
+    
+    // 检查是否在游戏页面
+    if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
+        initGame();
+    } else {
+        // 其他页面只检查登录状态
+        const isLoggedIn = await checkLoginStatus();
+        if (!isLoggedIn && window.location.pathname.endsWith('files.html')) {
+            sessionStorage.setItem('redirectAfterLogin', 'files.html');
+            showLoginModal();
+        }
+    }
+});
 
 // 清空画布
 function clearCanvas() {
@@ -531,98 +676,6 @@ function displayLeaderboard(leaderboard) {
     });
 }
 
-// 显示登录框
-function showLoginModal() {
-    console.log('Displaying login modal...');
-    const modal = document.getElementById('login-modal');
-    if (modal) {
-        modal.style.display = 'block';
-    } else {
-        console.error('Login modal element not found!');
-    }
-}
-
-// 隐藏登录框
-function hideLoginModal() {
-    const modal = document.getElementById('login-modal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-// 登录函数
-async function login() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-
-    try {
-        const response = await fetch('/api/login.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username, password }),
-            credentials: 'same-origin'
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            // 隐藏登录模态框
-            document.getElementById('login-modal').style.display = 'none';
-            
-            // 获取跳转目标
-            const redirectTo = sessionStorage.getItem('redirectAfterLogin');
-            if (redirectTo) {
-                sessionStorage.removeItem('redirectAfterLogin'); // 清除跳转标记
-                window.location.href = redirectTo;
-            } else {
-                // 刷新页面以更新状态
-                location.reload();
-            }
-        } else {
-            alert(data.message || '登录失败');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        alert('登录失败，请稍后重试');
-    }
-}
-
-// 注册函数
-async function register() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-
-    try {
-        const response = await fetch('/api/register.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username, password }),
-            credentials: 'same-origin'
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            alert('注册成功，已自动登录');
-            // 获取跳转目标
-            const redirectTo = sessionStorage.getItem('redirectAfterLogin');
-            if (redirectTo) {
-                sessionStorage.removeItem('redirectAfterLogin');
-                window.location.href = redirectTo;
-            } else {
-                location.reload();
-            }
-        } else {
-            alert(data.message || '注册失败');
-        }
-    } catch (error) {
-        console.error('Registration error:', error);
-        alert('注册失败，请稍后重试');
-    }
-}
-
 // 显示升级动画
 function showLevelUpAnimation() {
     const levelText = document.createElement('div');
@@ -634,49 +687,3 @@ function showLevelUpAnimation() {
         levelText.remove();
     }, 1000);
 }
-
-// 初始化
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM Content Loaded');
-    initGame();
-});
-
-// 打开文件管理器
-async function openFileManager() {
-    try {
-        // 检查登录状态
-        const response = await fetch('/api/check_login.php', {
-            credentials: 'same-origin'
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            // 已登录，直接跳转
-            window.location.href = 'files.html';
-        } else {
-            // 未登录，记录跳转目标并显示登录框
-            sessionStorage.setItem('redirectAfterLogin', 'files.html');
-            document.getElementById('login-modal').style.display = 'block';
-        }
-    } catch (error) {
-        console.error('Error checking login status:', error);
-        alert('检查登录状态失败');
-    }
-}
-
-// 页面加载时检查登录状态
-window.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const response = await fetch('/api/check_login.php', {
-            credentials: 'same-origin'
-        });
-        const data = await response.json();
-        
-        // 如果未登录且有重定向目标，显示登录框
-        if (!data.success && sessionStorage.getItem('redirectAfterLogin')) {
-            document.getElementById('login-modal').style.display = 'block';
-        }
-    } catch (error) {
-        console.error('Error checking login status:', error);
-    }
-});
